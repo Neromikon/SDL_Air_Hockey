@@ -61,14 +61,21 @@ private:
 class AIController final : public Controller
 {
 public:
+	AIController();
+
 	void Update() override;
 
 	inline void SetPuck(Entity *puck) { m_puck = puck; }
 	inline void SetOwnGateRectangle(const rectangle& gate) { m_ownGateRectangle = gate; }
 	inline void SetOpponentGateRectangle(const rectangle& gate) { m_opponentGateRectangle = gate; }
+
+private:
+	void OnNextRound();
+	void OnPuckCollision();
 	
 private:
 	Entity *m_puck;
 	rectangle m_ownGateRectangle;
 	rectangle m_opponentGateRectangle;
+	float m_remainingWaiting;
 };

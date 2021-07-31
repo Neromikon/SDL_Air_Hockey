@@ -16,19 +16,19 @@ circle::circle(const glm::vec2 &center, float radius):
 {}
 
 
-bool circle::Contact(const line &other) const
+float circle::Contact(const line &other) const
 {
 	return other.Contact(*this);
 }
 
 
-bool circle::Contact(const circle &other) const
+float circle::Contact(const circle &other) const
 {
-	return glm::distance(position, other.position) <= radius + other.radius;
+	return (radius + other.radius) - glm::distance(position, other.position);
 }
 
 
-bool circle::Contact(const rectangle &other) const
+float circle::Contact(const rectangle &other) const
 {
 	return other.Contact(*this);
 }

@@ -15,6 +15,8 @@ namespace
 
 	const size_t k_maxEntities = 10;
 
+	const int k_scoreLetterWidth = 20;
+
 	const float k_stickMovePower = 8.75f;
 	const float k_wallsVelocityConsumption = 0.25f;
 
@@ -29,6 +31,8 @@ namespace
 	const float k_puckFriction = 0.11f;
 	const float k_puckMass = 1.25f;
 
+	const float k_puckRespawnDelay = 1.0f; // seconds
+
 	const SDL_Color k_textColor = { 0, 0, 0, 255 };
 
 	const unsigned int k_stickCollisionMask = Entity::PUCK_LAYER | Entity::WALL_LAYER;
@@ -37,6 +41,9 @@ namespace
 	const unsigned int k_gateCollisionMask = Entity::PUCK_LAYER;
 }
 
+
+Event<void()> Game::s_onNextRound;
+Event<void()> Game::s_onPuckCollision;
 
 float Game::deltaTime;
 
@@ -50,6 +57,7 @@ float Game::reverseWindowRatio;
 
 bool Game::s_isEnded = false;
 Uint32 Game::s_frameStartMoment = 0;
+float s_puckRespawnDelay = 0.0f;
 
 SDL_Window* Game::s_window = nullptr;
 SDL_Renderer* Game::s_renderer = nullptr;
@@ -86,6 +94,7 @@ SDL_Texture* Game::s_scoreTexture2 = nullptr;
 Mix_Music* Game::s_puckCollidesWallSound = nullptr;
 Mix_Music* Game::s_puckCollidesStickSound = nullptr;
 Mix_Music* Game::s_puckEntersGateSound = nullptr;
+Mix_Music* Game::s_scoreResetSound = nullptr;
 
 Entity* Game::s_stick1 = nullptr;
 Entity* Game::s_stick2 = nullptr;
@@ -110,7 +119,8 @@ const std::vector<Resource<Mix_Music*>> Game::k_soundResources =
 {
 	Resource<Mix_Music*>(Game::s_puckCollidesWallSound, "Assets/Pong.mp3"),
 	Resource<Mix_Music*>(Game::s_puckCollidesStickSound, "Assets/PongLow.mp3"),
-	Resource<Mix_Music*>(Game::s_puckEntersGateSound, "Assets/RoundEnd.mp3")
+	Resource<Mix_Music*>(Game::s_puckEntersGateSound, "Assets/RoundEnd.mp3"),
+	Resource<Mix_Music*>(Game::s_scoreResetSound, "Assets/RoundEnd.mp3")
 };
 
 const Resource<TTF_Font*> Game::k_fontResource(Game::s_font, "Assets/consolas.ttf");
@@ -174,8 +184,14 @@ void Game::ProcessEvents()
 				{
 					s_isEnded = true;
 				}
-
-				s_player.OnKeyboardDown(sdlEvent.key.keysym.scancode);
+				else if (sdlEvent.key.keysym.scancode == SDL_Scancode::SDL_SCANCODE_SPACE)
+				{
+					OnRestartClick();
+				}
+				else
+				{
+					s_player.OnKeyboardDown(sdlEvent.key.keysym.scancode);
+				}
 
 				break;
 			}
@@ -201,25 +217,10 @@ void Game::Update()
 {
 	deltaTime = 0.001f * static_cast<float>(s_desiredFramePeriod); //fixed update is used so delta time does not change each frame
 
-	if (!s_puck->IsEnabled())
-	{
-		if (IsPuckSpawnerFree())
-		{
-			s_puck->SetEnabled(true);
-		}
-	}
-
-	s_player1->Update();
-	s_player2->Update();
-
-	CheckCollisions();
-
-	for (int i = 0; i < s_entities.size(); i++)
-	{
-		if (!s_entities[i].IsEnabled()) { continue; }
-
-		s_entities[i].Update();
-	}
+	UpdatePuck();
+	UpdatePlayers();
+	UpdatePhysics();
+	UpdateEntities();
 }
 
 
@@ -227,24 +228,9 @@ void Game::Render()
 {
 	SDL_RenderCopy(s_renderer, s_backgroundTexture, NULL, NULL);
 
-	for (int i = 0; i < s_entities.size(); i++)
-	{
-		if (!s_entities[i].IsEnabled()) { continue; }
-
-		s_entities[i].Draw();
-	}
-
-	for (int i = 0; i < s_borders.size(); i++)
-	{
-		int x1 = s_borders[i].point1.x * windowSize.x;
-		int y1 = (1.0f - s_borders[i].point1.y * windowRatio) * windowSize.y;
-		int x2 = s_borders[i].point2.x * windowSize.x;
-		int y2 = (1.0f - s_borders[i].point2.y * windowRatio) * windowSize.y;
-		SDL_RenderDrawLine(s_renderer, x1, y1, x2, y2);
-	}
-
-	SDL_RenderCopy(s_renderer, s_scoreTexture1, nullptr, &s_scoreRect1);
-	SDL_RenderCopy(s_renderer, s_scoreTexture2, nullptr, &s_scoreRect2);
+	RenderEntities();
+	RenderBorders();
+	RenderScore();
 
 	SDL_RenderPresent(s_renderer);
 }
@@ -279,23 +265,11 @@ void Game::Restart()
 	s_stick1->SetAnchoredPosition(glm::vec2(0.0f, 0.0f), glm::vec2(0.5f, 0.25f));
 	s_stick2->SetAnchoredPosition(glm::vec2(0.0f, 0.0f), glm::vec2(0.5f, 0.75f));
 
-	NextRound();
-}
-
-
-void Game::NextRound()
-{
 	s_puck->SetAnchoredPosition(glm::vec2(0.0f, 0.0f), glm::vec2(0.5f, 0.5f));
 	s_puck->SetVelocity(glm::vec2(0.0f, 0.0f));
+	s_puck->SetEnabled(true);
 
-	if (IsPuckSpawnerFree())
-	{
-		s_puck->SetEnabled(true);
-	}
-	else
-	{
-		s_puck->SetEnabled(false);
-	}
+	s_onNextRound.Invoke();
 }
 
 
@@ -310,7 +284,7 @@ Entity* Game::CreateStick(SDL_Texture *texture, SDL_Texture *animationSheet)
 	entity.SetShape(shape::CIRCLE);
 	entity.SetSize(glm::vec2(k_stickRadius * 2.0f));
 	entity.SetFrinction(k_stickFriction);
-	entity.OnCollision(OnStickCollision);
+	entity.m_onCollision.AddListener(OnStickCollision);
 
 	entity.AddAnimation("Idle", Animation::CreateSingleFrame(texture));
 
@@ -329,6 +303,7 @@ Entity* Game::CreatePuck()
 {
 	Entity &entity = AddEntity();
 
+	entity.SetName("Puck");
 	entity.SetLayerMask(Entity::PUCK_LAYER);
 	entity.SetCollisionMask(k_puckCollisionMask);
 	entity.SetRenderer(s_renderer);
@@ -336,7 +311,8 @@ Entity* Game::CreatePuck()
 	entity.SetShape(shape::CIRCLE);
 	entity.SetSize(glm::vec2(k_puckRadius * 2.0f));
 	entity.SetFrinction(k_puckFriction);
-	entity.OnCollisionWithLayer(OnPuckCollision);
+	entity.m_onCollisionWithLayer.AddListener(OnPuckCollision);
+	entity.SetEnabled(false);
 
 	entity.AddAnimation("Idle", Animation::CreateSingleFrame(s_puckTexture));
 
@@ -476,20 +452,30 @@ bool Game::InitPlayground()
 	s_entities.reserve(k_maxEntities);
 
 	s_stick1 = CreateStick(s_stickTexture1, s_stickAnimationSheet1);
+	if (s_stick1)
+	{
+		s_stick1->SetName("Stick 1");
+	}
 
 	s_stick2 = CreateStick(s_stickTexture2, s_stickAnimationSheet2);
+	if (s_stick2)
+	{
+		s_stick2->SetName("Stick 2");
+	}
 
 	s_puck = CreatePuck();
 
 	Entity *wall;
 
 	Entity *gate1 = CreateGate();
-	gate1->OnCollision(OnPlayer2Score);
+	gate1->m_onCollision.AddListener(OnPlayerScore);
+	gate1->m_onCollision.AddListener(OnPlayer2Score);
 	gate1->SetSize(glm::vec2(k_gateWidth, k_wallsWidth * 0.5f));
 	gate1->SetAnchoredPosition(glm::vec2(0.0f, k_wallsWidth * 0.25f), glm::vec2(0.5f, 0.0f));
 
 	Entity *gate2 = CreateGate();
-	gate2->OnCollision(OnPlayer1Score);
+	gate2->m_onCollision.AddListener(OnPlayerScore);
+	gate2->m_onCollision.AddListener(OnPlayer1Score);
 	gate2->SetSize(glm::vec2(k_gateWidth, k_wallsWidth * 0.5f));
 	gate2->SetAnchoredPosition(glm::vec2(0.0f, -k_wallsWidth * 0.25f), glm::vec2(0.5f, 1.0f));
 
@@ -556,12 +542,12 @@ bool Game::InitInterface()
 
 	s_scoreRect1.x = windowSize.x - 50;
 	s_scoreRect1.y = windowSize.y - 25;
-	s_scoreRect1.w = 50;
+	s_scoreRect1.w = k_scoreLetterWidth;
 	s_scoreRect1.h = 25;
 
 	s_scoreRect2.x = windowSize.x - 50;
 	s_scoreRect2.y = 0;
-	s_scoreRect2.w = 50;
+	s_scoreRect2.w = k_scoreLetterWidth;
 	s_scoreRect2.h = 25;
 
 	return true;
@@ -578,7 +564,32 @@ Entity& Game::AddEntity()
 }
 
 
-void Game::CheckCollisions()
+void Game::UpdatePuck()
+{
+	if (!s_puck->IsEnabled())
+	{
+		s_puckRespawnDelay -= deltaTime;
+
+		if (s_puckRespawnDelay <= 0.0f)
+		{
+			if (IsPuckSpawnerFree())
+			{
+				s_puck->SetEnabled(true);
+				s_onNextRound.Invoke();
+			}
+		}
+	}
+}
+
+
+void Game::UpdatePlayers()
+{
+	s_player1->Update();
+	s_player2->Update();
+}
+
+
+void Game::UpdatePhysics()
 {
 	for (int i = 0; i < s_entities.size(); i++)
 	{
@@ -588,9 +599,10 @@ void Game::CheckCollisions()
 		{
 			if (!s_entities[j].IsEnabled()) { continue; }
 
-			if (s_entities[i].Contact(s_entities[j]))
+			const float penetration = s_entities[i].Contact(s_entities[j]);
+			if (penetration > 0.0f)
 			{
-				s_entities[i].Collide(s_entities[j]);
+				s_entities[i].Collide(s_entities[j], penetration);
 			}
 		}
 
@@ -607,16 +619,84 @@ void Game::CheckCollisions()
 }
 
 
+void Game::UpdateEntities()
+{
+	for (int i = 0; i < s_entities.size(); i++)
+	{
+		if (!s_entities[i].IsEnabled()) { continue; }
+
+		s_entities[i].Update();
+	}
+}
+
+
+void Game::RenderEntities()
+{
+	for (int i = 0; i < s_entities.size(); i++)
+	{
+		if (!s_entities[i].IsEnabled()) { continue; }
+
+		s_entities[i].Draw();
+	}
+}
+
+
+void Game::RenderBorders()
+{
+	for (int i = 0; i < s_borders.size(); i++)
+	{
+		int x1 = s_borders[i].point1.x * windowSize.x;
+		int y1 = (1.0f - s_borders[i].point1.y * windowRatio) * windowSize.y;
+		int x2 = s_borders[i].point2.x * windowSize.x;
+		int y2 = (1.0f - s_borders[i].point2.y * windowRatio) * windowSize.y;
+		SDL_RenderDrawLine(s_renderer, x1, y1, x2, y2);
+	}
+}
+
+
+void Game::RenderScore()
+{
+	// not optimal but works good enough
+	s_scoreRect1.w = k_scoreLetterWidth * std::to_string(s_count1).length();
+	s_scoreRect2.w = k_scoreLetterWidth * std::to_string(s_count2).length();
+
+	SDL_RenderCopy(s_renderer, s_scoreTexture1, nullptr, &s_scoreRect1);
+	SDL_RenderCopy(s_renderer, s_scoreTexture2, nullptr, &s_scoreRect2);
+}
+
+
 bool Game::IsPuckSpawnerFree()
 {
 	for (int i = 0; i < s_entities.size(); i++)
 	{
 		if (!s_entities[i].IsEnabled()) { continue; }
 
-		if (s_entities[i].Contact(s_puckSpawner)) { return false; }
+		if (s_entities[i].Contact(s_puckSpawner) > 0.0f) { return false; }
 	}
 
 	return true;
+}
+
+
+void Game::OnRestartClick()
+{
+	Mix_PlayMusic(s_scoreResetSound, 1);
+
+	Restart();
+}
+
+
+void Game::OnPlayerScore(Entity* entity1, Entity* entity2)
+{
+	Mix_PlayMusic(s_puckEntersGateSound, 1);
+
+	entity1->Play("Score");
+
+	s_puck->SetAnchoredPosition(glm::vec2(0.0f, 0.0f), glm::vec2(0.5f, 0.5f));
+	s_puck->SetVelocity(glm::vec2(0.0f, 0.0f));
+	s_puck->SetEnabled(false);
+
+	s_puckRespawnDelay = k_puckRespawnDelay;
 }
 
 
@@ -624,17 +704,11 @@ void Game::OnPlayer1Score(Entity* entity1, Entity* entity2)
 {
 	s_count1++;
 
-	Mix_PlayMusic(s_puckEntersGateSound, 1);
-
 	SDL_Surface *surface = TTF_RenderText_Blended(s_font, std::to_string(s_count1).c_str(), k_textColor);
 
 	s_scoreTexture1 = SDL_CreateTextureFromSurface(s_renderer, surface);
 
 	SDL_FreeSurface(surface);
-
-	entity1->Play("Score");
-
-	NextRound();
 }
 
 
@@ -642,17 +716,11 @@ void Game::OnPlayer2Score(Entity* entity1, Entity* entity2)
 {
 	s_count2++;
 
-	Mix_PlayMusic(s_puckEntersGateSound, 1);
-
 	SDL_Surface *surface = TTF_RenderText_Blended(s_font, std::to_string(s_count2).c_str(), k_textColor);
 
 	s_scoreTexture2 = SDL_CreateTextureFromSurface(s_renderer, surface);
 
 	SDL_FreeSurface(surface);
-
-	entity1->Play("Score");
-
-	NextRound();
 }
 
 
@@ -672,4 +740,6 @@ void Game::OnPuckCollision(Entity* entity, Entity::mask_t layerMask)
 		case Entity::WALL_LAYER: Mix_PlayMusic(s_puckCollidesWallSound, 1); break;
 		case Entity::STICK_LAYER: Mix_PlayMusic(s_puckCollidesStickSound, 1); break;
 	}
+
+	s_onPuckCollision.Invoke();
 }

@@ -3,12 +3,18 @@
 #include "Game.h"
 
 
+namespace
+{
+	const float kPenetrationRepellingCoefficient = 1.5f;
+}
+
+
 shape::shape() :
 	m_type(CIRCLE)
 {}
 
 
-bool shape::Contact(const shape& other) const
+float shape::Contact(const shape& other) const
 {
 	switch (shape::Combination(m_type, other.m_type))
 	{
@@ -26,7 +32,7 @@ bool shape::Contact(const shape& other) const
 		{
 			SDL_assert(false);
 			std::cerr << "Unhandled combination of geomentry shapes\n";
-			return false;
+			return 0.0f;
 		}
 	}
 }
@@ -63,7 +69,7 @@ Entity::Entity() :
 }
 
 
-bool Entity::Contact(const Entity &other) const
+float Entity::Contact(const Entity &other) const
 {
 	if (!(m_layerMask & other.m_collisionMask)) { return false; }
 
@@ -76,7 +82,8 @@ bool Entity::Contact(const Entity &other) const
 
 		for (float i = 0.0f; i < 1.0f; i += k_timeStep)
 		{
-			if (tempShape1.Contact(tempShape2)) { return true; }
+			const float penetration = tempShape1.Contact(tempShape2);
+			if (penetration > 0.0f) { return penetration; }
 
 			tempShape1.Translate(m_velocity * Game::deltaTime * k_timeStep);
 			tempShape2.Translate(other.m_velocity * Game::deltaTime * k_timeStep);
@@ -87,11 +94,11 @@ bool Entity::Contact(const Entity &other) const
 		return m_shape.Contact(other.m_shape);
 	}
 
-	return false;
+	return 0.0f;
 }
 
 
-void Entity::Collide(Entity &other)
+void Entity::Collide(Entity &other, float penetration)
 {
 	m_onCollision.Invoke(this, &other);
 	other.m_onCollision.Invoke(&other, this);
@@ -117,8 +124,10 @@ void Entity::Collide(Entity &other)
 		const float newNormalSpeed1 = ((m_mass - other.m_mass) * normalSpeed1 + 2.0f * other.m_mass * normalSpeed2) * reverseMassSum;
 		const float newNormalSpeed2 = ((other.m_mass - m_mass) * normalSpeed2 + 2.0f * m_mass * normalSpeed1) * reverseMassSum;
 
-		m_velocity = newNormalSpeed1 * normal + tangentSpeed1 * tangent;
-		other.m_velocity = newNormalSpeed2 * normal + tangentSpeed2 * tangent;
+		const float repellingSpeed = -penetration * kPenetrationRepellingCoefficient * 0.5f;
+
+		m_velocity = (newNormalSpeed1 + repellingSpeed) * normal + tangentSpeed1 * tangent;
+		other.m_velocity = (newNormalSpeed2 - repellingSpeed) * normal + tangentSpeed2 * tangent;
 	}
 	else
 	{

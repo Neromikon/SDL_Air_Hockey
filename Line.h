@@ -15,9 +15,9 @@ struct line final
 	line();
 	line(const glm::vec2& point1, const glm::vec2& point2);
 
-	bool Contact(const line& other) const;
-	bool Contact(const circle& other) const;
-	bool Contact(const rectangle& other) const;
+	float Contact(const line& other) const;
+	float Contact(const circle& other) const;
+	float Contact(const rectangle& other) const;
 
 	inline float length() const { return glm::length(point1 - point2); }
 

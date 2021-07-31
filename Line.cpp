@@ -16,7 +16,7 @@ line::line(const glm::vec2& point1, const glm::vec2& point2) :
 {}
 
 
-bool line::Contact(const line& other) const
+float line::Contact(const line& other) const
 {
 	const float k_errorCoefficient = 1.001f;
 
@@ -32,7 +32,7 @@ bool line::Contact(const line& other) const
 }
 
 
-bool line::Contact(const circle& other) const
+float line::Contact(const circle& other) const
 {
 	const glm::vec2 distance1 = other.position - point1;
 	if (glm::dot(distance1, distance1) <= other.radius * other.radius) { return true; }
@@ -52,7 +52,7 @@ bool line::Contact(const circle& other) const
 }
 
 
-bool line::Contact(const rectangle& other) const
+float line::Contact(const rectangle& other) const
 {
 	assert(false);
 	return false; //TODO

@@ -2,7 +2,7 @@
 
 
 template <typename type>
-bool shape::Contact(const type& other) const
+float shape::Contact(const type& other) const
 {
 	switch (m_type)
 	{
@@ -14,7 +14,7 @@ bool shape::Contact(const type& other) const
 		{
 			SDL_assert(false);
 			std::cerr << "Unhandled shape combination";
-			return false;
+			return 0.0f;
 		}
 	}
 }

@@ -1,3 +1,5 @@
+#include <chrono>
+
 #include "Controller.h"
 
 #include "Game.h"
@@ -11,6 +13,9 @@ namespace
 	const float k_enoughDestinationDistance = 0.008f;
 	const float k_defendDistance = 0.15f;
 	const float k_minimumDirectionCosinus = 0.5f;
+
+	const float k_minAiNextRoundWaitDuration = 0.1f; // seconds; gives player a chance to hit the puck firts
+	const float k_maxAiNextRoundWaitDuration = 2.2f;
 }
 
 
@@ -89,11 +94,20 @@ glm::vec2 KeyboardController::GetDirection() const
 }
 
 
+AIController::AIController()
+{
+	Game::s_onNextRound.AddListener([this]() { OnNextRound(); });
+	Game::s_onPuckCollision.AddListener([this]() { OnPuckCollision(); });
+}
+
+
 void AIController::Update()
 {
 	glm::vec2 moveDirection(0.0f, 0.0f);
 
-	if (m_puck->IsEnabled() && m_ownArea.Contain(m_puck->GetPosition()))
+	m_remainingWaiting = fmaxf(m_remainingWaiting - Game::deltaTime, 0.0f);
+
+	if (m_remainingWaiting <= 0.0f && m_puck->IsEnabled() && m_ownArea.Contain(m_puck->GetPosition()))
 	{
 		if (!m_puck->IsMoving())
 		{
@@ -131,4 +145,19 @@ void AIController::Update()
 	}
 
 	m_controlTarget->AccelerateWithLimit(moveDirection * m_moveForce, k_maxSpeed);
+}
+
+void AIController::OnNextRound()
+{
+	srand(std::chrono::steady_clock::now().time_since_epoch().count());
+	
+	const float randomValue = 0.0001f * static_cast<float>(rand() % 10000);
+	const float randomTime = (k_maxAiNextRoundWaitDuration - k_minAiNextRoundWaitDuration) * randomValue;
+
+	m_remainingWaiting = k_minAiNextRoundWaitDuration + randomTime;
+}
+
+void AIController::OnPuckCollision()
+{
+	m_remainingWaiting = 0.0f;
 }

@@ -2,7 +2,7 @@
 
 
 template<typename ShapeType>
-bool Entity::Contact(const ShapeType &other, mask_t collisionMask) const
+float Entity::Contact(const ShapeType &other, mask_t collisionMask) const
 {
 	if (!(m_layerMask & collisionMask)) { return false; }
 
@@ -14,12 +14,13 @@ bool Entity::Contact(const ShapeType &other, mask_t collisionMask) const
 
 		for (float i = 0.0f; i < 1.0f; i += k_timeStep)
 		{
-			if (tempShape.Contact(other)) { return true; }
+			const float penetration = tempShape.Contact(other);
+			if (penetration > 0.0f) { return penetration; }
 
 			tempShape.Translate(m_velocity * Game::deltaTime * k_timeStep);
 		}
 
-		return false;
+		return 0.0f;
 	}
 	else
 	{

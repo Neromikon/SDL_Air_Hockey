@@ -23,9 +23,9 @@ struct shape final
 
 	shape();
 
-	bool Contact(const shape& other) const;
+	float Contact(const shape& other) const;
 
-	template <typename type> bool Contact(const type& other) const;
+	template <typename type> float Contact(const type& other) const;
 
 	void Translate(const glm::vec2& distance);
 

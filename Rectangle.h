@@ -19,9 +19,9 @@ struct rectangle final
 
 	bool Contain(const glm::vec2& point) const;
 
-	bool Contact(const line& other) const;
-	bool Contact(const circle& other) const;
-	bool Contact(const rectangle& other) const;
+	float Contact(const line& other) const;
+	float Contact(const circle& other) const;
+	float Contact(const rectangle& other) const;
 
 	float Radius() const;
 	circle BoundingCircle() const;

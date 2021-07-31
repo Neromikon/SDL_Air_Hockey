@@ -11,6 +11,7 @@
 #include "Controller.h"
 #include "Entity.h"
 #include "Resource.h"
+#include "Event.h"
 
 
 class Game //static
@@ -34,13 +35,15 @@ public:
 	static void FinishFrame();
 
 	static void Restart();
-	static void NextRound();
 
 	static Entity* CreateStick(SDL_Texture *texture, SDL_Texture *animationSheet);
 	static Entity* CreatePuck();
 	static Entity* CreateGate();
 
 	inline static bool IsEnded() { return s_isEnded; }
+
+	static Event<void()> s_onNextRound;
+	static Event<void()> s_onPuckCollision;
 
 private:
 	static bool s_isEnded;
@@ -83,6 +86,7 @@ private:
 	static Mix_Music *s_puckCollidesWallSound;
 	static Mix_Music *s_puckCollidesStickSound;
 	static Mix_Music *s_puckEntersGateSound;
+	static Mix_Music *s_scoreResetSound;
 
 	static Entity *s_stick1, *s_stick2, *s_puck;
 
@@ -98,9 +102,19 @@ private:
 
 	static Entity& AddEntity();
 
-	static void CheckCollisions();
+	static void UpdatePuck();
+	static void UpdatePlayers();
+	static void UpdatePhysics();
+	static void UpdateEntities();
+
+	static void RenderEntities();
+	static void RenderBorders();
+	static void RenderScore();
+	
 	static bool IsPuckSpawnerFree();
 
+	static void OnRestartClick();
+	static void OnPlayerScore(Entity*, Entity*);
 	static void OnPlayer1Score(Entity*, Entity*);
 	static void OnPlayer2Score(Entity*, Entity*);
 	static void OnStickCollision(Entity* entity1, Entity* entity2);

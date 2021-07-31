@@ -36,13 +36,13 @@ bool rectangle::Contain(const glm::vec2 &point) const
 }
 
 
-bool rectangle::Contact(const line& other) const
+float rectangle::Contact(const line& other) const
 {
 	return other.Contact(*this);
 }
 
 
-bool rectangle::Contact(const circle &other) const
+float rectangle::Contact(const circle &other) const
 {
 	const glm::vec2 distance = other.position - position;
 	const glm::vec2 normalizedAxis1 = glm::normalize(axis1);
@@ -53,27 +53,21 @@ bool rectangle::Contact(const circle &other) const
 	if (distanceByAxis1 > glm::length(axis1) + other.radius) { return false; }
 	if (distanceByAxis2 > glm::length(axis2) + other.radius) { return false; }
 
-	return true;
+	return 1.0f;
 }
 
 
-bool rectangle::Contact(const rectangle &other) const
+float rectangle::Contact(const rectangle &other) const
 {
-	return false; //WIP
+	const glm::vec2 size(axis1.length(), axis2.length());
+	const glm::vec2 otherSize(other.axis1.length(), other.axis2.length());
 
-	//if any corner of other rectangle is inside then they are in contact
+	if (position.x - size.x > other.position.x + otherSize.x) { return 0.0f; }
+	if (position.y - size.y > other.position.y + otherSize.y) { return 0.0f; }
+	if (position.x + size.x < other.position.x - otherSize.x) { return 0.0f; }
+	if (position.y + size.y < other.position.y - otherSize.y) { return 0.0f; }
 
-	if (Contain(other.position + other.axis1 + other.axis2)) { return true; }
-	if (Contain(other.position + other.axis1 - other.axis2)) { return true; }
-	if (Contain(other.position - other.axis1 + other.axis2)) { return true; }
-	if (Contain(other.position - other.axis1 - other.axis2)) { return true; }
-
-	if (other.Contain(position + axis1 + axis2)) { return true; }
-	if (other.Contain(position + axis1 - axis2)) { return true; }
-	if (other.Contain(position - axis1 + axis2)) { return true; }
-	if (other.Contain(position - axis1 - axis2)) { return true; }
-
-	return false;
+	return 1.0f;
 }
 
 

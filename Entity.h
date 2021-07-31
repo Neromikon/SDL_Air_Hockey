@@ -25,11 +25,11 @@ public:
 	Entity();
 	virtual ~Entity() = default;
 
-	bool Contact(const Entity &other) const;
+	float Contact(const Entity &other) const;
 
-	template<typename ShapeType> bool Contact(const ShapeType &other, mask_t collisionMask = 0xFFFFFFFF) const;
+	template<typename ShapeType> float Contact(const ShapeType &other, mask_t collisionMask = 0xFFFFFFFF) const;
 
-	void Collide(Entity &other);
+	void Collide(Entity &other, float penetration);
 	void ReflectFrom(const line& other, mask_t layerMask, float consumedVelocityRatio = 0.0f);
 
 	virtual void Update();
@@ -62,6 +62,7 @@ public:
 	inline Animation& GetAnimation(const std::string& animation) { return m_animationController.GetAnimation(animation); }
 
 	inline void SetEnabled(bool enabled) { m_isEnabled = enabled; }
+	inline void SetName(const std::string &name) { m_name = name; }
 	inline void SetRenderer(SDL_Renderer *renderer) { m_sdlRenderer = renderer; }
 	inline void SetVelocity(const glm::vec2& velocity) { m_velocity = velocity; }
 	inline void SetMass(float mass) { m_mass = mass; }
@@ -70,13 +71,16 @@ public:
 	inline void SetCollisionMask(unsigned int mask) { m_collisionMask = mask; }
 	inline void SetFrinction(float friction) { m_friction = friction; }
 
-	inline void OnCollision(std::function<void(Entity*, Entity*)> listener) { m_onCollision.AddListener(listener); }
-	inline void OnCollisionWithLayer(std::function<void(Entity*, mask_t layerMask)> listener) { m_onCollisionWithLayer.AddListener(listener); }
+public:
+	Event<void(Entity*, Entity*)> m_onCollision;
+	Event<void(Entity*, mask_t layerMask)> m_onCollisionWithLayer;
 
 private:
 	bool m_isEnabled;
 	bool m_isStatic;
 	bool m_isPhysical;
+
+	std::string m_name;
 
 	glm::vec2 m_position;
 	glm::quat m_orientation;
@@ -93,9 +97,6 @@ private:
 	SDL_Rect m_sdlRect;
 
 	AnimationController m_animationController;
-
-	Event<void(Entity*, Entity*)> m_onCollision;
-	Event<void(Entity*, mask_t layerMask)> m_onCollisionWithLayer;
 
 	void UpdateRect();
 	void UpdateShape();

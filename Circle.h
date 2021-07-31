@@ -16,7 +16,7 @@ struct circle final
 	circle();
 	circle(const glm::vec2 &center, float radius);
 
-	bool Contact(const line &other) const;
-	bool Contact(const circle &other) const;
-	bool Contact(const rectangle &other) const;
+	float Contact(const line &other) const;
+	float Contact(const circle &other) const;
+	float Contact(const rectangle &other) const;
 };
