@@ -12,6 +12,15 @@ AnimationController::AnimationController() :
 {}
 
 
+AnimationController::~AnimationController()
+{
+	for (auto animation : m_animations)
+	{
+		delete animation.second;
+	}
+}
+
+
 void AnimationController::Update()
 {
 	if (m_isPaused) { return; }
@@ -23,7 +32,11 @@ void AnimationController::Update()
 		m_currentAnimation = m_animations.begin()->first;
 	}
 
-	const Animation& animation = m_animations[m_currentAnimation];
+	const auto it = m_animations.find(m_currentAnimation);
+
+	if (it == m_animations.end()) { return; }
+
+	const Animation& animation = *it->second;
 
 	if (animation.m_duration > 0.0f)
 	{

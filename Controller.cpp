@@ -16,6 +16,9 @@ namespace
 
 	const float k_minAiNextRoundWaitDuration = 0.1f; // seconds; gives player a chance to hit the puck firts
 	const float k_maxAiNextRoundWaitDuration = 2.2f;
+
+	const float k_guardPointChangePeriod = 6.0f; // seconds
+	const float k_reverseGuardPointChangePeriod = 1.0f / k_guardPointChangePeriod; // seconds
 }
 
 
@@ -96,6 +99,9 @@ glm::vec2 KeyboardController::GetDirection() const
 
 AIController::AIController()
 {
+	srand(std::chrono::steady_clock::now().time_since_epoch().count());
+	m_gateGuardPointPhase = 0.001f * (rand() % 1000);
+
 	Game::s_onNextRound.AddListener([this]() { OnNextRound(); });
 	Game::s_onPuckCollision.AddListener([this]() { OnPuckCollision(); });
 }
@@ -135,7 +141,12 @@ void AIController::Update()
 	
 	if(moveDirection.x == 0.0f && moveDirection.y == 0.0f)
 	{
-		const glm::vec2 referencePoint = m_ownGateRectangle.Nearest(m_puck->GetPosition());
+		m_gateGuardPointPhase += Game::deltaTime * k_reverseGuardPointChangePeriod;
+		m_gateGuardPointPhase -= static_cast<float>(static_cast<int>(m_gateGuardPointPhase));
+
+		const float gateWidth = glm::length(m_ownGateRectangle.axis1);
+		const glm::vec2 phaseOffset(cosf(m_gateGuardPointPhase * 2.0f * M_PI) * gateWidth * 0.25f, 0.0f);
+		const glm::vec2 referencePoint = m_ownGateRectangle.Nearest(m_puck->GetPosition()) + phaseOffset;
 		const glm::vec2 aimPoint = referencePoint + glm::normalize(m_puck->GetPosition() - referencePoint) * k_defendDistance;
 
 		if (glm::distance(m_controlTarget->GetPosition(), aimPoint) > k_enoughDestinationDistance)

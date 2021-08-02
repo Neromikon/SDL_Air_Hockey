@@ -58,8 +58,8 @@ public:
 	inline void Pause() { m_animationController.Pause(); }
 	inline void Resume() { m_animationController.Resume(); }
 
-	inline Animation& AddAnimation(const std::string& name, const Animation &animation) { return m_animationController.AddAnimation(name, animation); }
-	inline Animation& GetAnimation(const std::string& animation) { return m_animationController.GetAnimation(animation); }
+	inline Animation* AddAnimation(const std::string& name, Animation *animation) { return m_animationController.AddAnimation(name, animation); }
+	inline Animation* GetAnimation(const std::string& animation) { return m_animationController.GetAnimation(animation); }
 
 	inline void SetEnabled(bool enabled) { m_isEnabled = enabled; }
 	inline void SetName(const std::string &name) { m_name = name; }

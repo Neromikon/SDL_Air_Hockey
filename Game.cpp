@@ -13,6 +13,10 @@ namespace
 	const Uint32 k_initFlags = SDL_INIT_TIMER | SDL_INIT_EVENTS | SDL_INIT_VIDEO | SDL_INIT_AUDIO;
 	const Uint32 k_windowFlags = SDL_WINDOW_BORDERLESS | SDL_WINDOW_SHOWN;
 
+	const SDL_Scancode k_exitKeyCode = SDL_Scancode::SDL_SCANCODE_ESCAPE;
+	const SDL_Scancode k_restartKeyCode = SDL_Scancode::SDL_SCANCODE_SPACE;
+	const SDL_Scancode k_autopilotKeyCode = SDL_Scancode::SDL_SCANCODE_A;
+
 	const size_t k_maxEntities = 10;
 
 	const int k_scoreLetterWidth = 20;
@@ -32,6 +36,8 @@ namespace
 	const float k_puckMass = 1.25f;
 
 	const float k_puckRespawnDelay = 1.0f; // seconds
+
+	const float k_gateBlinkFreauency = 2.5f; // Hertz
 
 	const SDL_Color k_textColor = { 0, 0, 0, 255 };
 
@@ -69,11 +75,14 @@ Uint32 Game::s_desiredFramePeriod; // milliseconds
 
 KeyboardController Game::s_player;
 AIController Game::s_bot;
+AIController Game::s_bot2;
 
 Controller* Game::s_player1 = nullptr;
 Controller* Game::s_player2 = nullptr;
 unsigned int Game::s_count1 = 0;
 unsigned int Game::s_count2 = 0;
+std::string s_count1Str = "0";
+std::string s_count2Str = "0";
 
 std::vector<Entity> Game::s_entities;
 std::vector<line> Game::s_borders;
@@ -85,6 +94,7 @@ SDL_Texture* Game::s_stickTexture2 = nullptr;
 SDL_Texture* Game::s_stickAnimationSheet1 = nullptr;
 SDL_Texture* Game::s_stickAnimationSheet2 = nullptr;
 SDL_Texture* Game::s_gateTexture = nullptr;
+SDL_Texture* Game::s_gateScoreTexture = nullptr;
 SDL_Texture* Game::s_gateAnimationSheet = nullptr;
 
 TTF_Font* Game::s_font = nullptr;
@@ -112,6 +122,7 @@ const std::vector<Resource<SDL_Texture*>> Game::k_textureResources =
 	Resource<SDL_Texture*>(Game::s_stickAnimationSheet1, "Assets/StickP1Animation.png"),
 	Resource<SDL_Texture*>(Game::s_stickAnimationSheet2, "Assets/StickP2Animation.png"),
 	Resource<SDL_Texture*>(Game::s_gateTexture, "Assets/Gate.png"),
+	Resource<SDL_Texture*>(Game::s_gateScoreTexture, "Assets/GateScore.png"),
 	Resource<SDL_Texture*>(Game::s_gateAnimationSheet, "Assets/GateAnimation.png"),
 };
 
@@ -180,26 +191,13 @@ void Game::ProcessEvents()
 		{
 			case SDL_KEYDOWN:
 			{
-				if (sdlEvent.key.keysym.scancode == SDL_Scancode::SDL_SCANCODE_ESCAPE)
-				{
-					s_isEnded = true;
-				}
-				else if (sdlEvent.key.keysym.scancode == SDL_Scancode::SDL_SCANCODE_SPACE)
-				{
-					OnRestartClick();
-				}
-				else
-				{
-					s_player.OnKeyboardDown(sdlEvent.key.keysym.scancode);
-				}
-
+				OnKeyDown(sdlEvent.key.keysym.scancode);
 				break;
 			}
 
 			case SDL_KEYUP:
 			{
-				s_player.OnKeyboardUp(sdlEvent.key.keysym.scancode);
-
+				OnKeyUp(sdlEvent.key.keysym.scancode);
 				break;
 			}
 
@@ -286,11 +284,11 @@ Entity* Game::CreateStick(SDL_Texture *texture, SDL_Texture *animationSheet)
 	entity.SetFrinction(k_stickFriction);
 	entity.m_onCollision.AddListener(OnStickCollision);
 
-	entity.AddAnimation("Idle", Animation::CreateSingleFrame(texture));
+	entity.AddAnimation("Idle", FrameAnimation::CreateSingleFrame(texture));
 
 	{
 		const std::vector<int> animFrames ={ 0, 1, 2, 3, 3, 3, 2, 1, 0 };
-		Animation &addedAnimation = entity.AddAnimation("Blink", Animation::CreateFromSpriteSheet2x2(animationSheet, animFrames));
+		Animation &addedAnimation = *entity.AddAnimation("Blink", FrameAnimation::CreateFromSpriteSheet2x2(animationSheet, animFrames));
 		addedAnimation.SetNextState("Idle");
 		addedAnimation.SetDuration(0.25f);
 	}
@@ -314,7 +312,7 @@ Entity* Game::CreatePuck()
 	entity.m_onCollisionWithLayer.AddListener(OnPuckCollision);
 	entity.SetEnabled(false);
 
-	entity.AddAnimation("Idle", Animation::CreateSingleFrame(s_puckTexture));
+	entity.AddAnimation("Idle", FrameAnimation::CreateSingleFrame(s_puckTexture));
 
 	return &entity;
 }
@@ -331,13 +329,13 @@ Entity* Game::CreateGate()
 	entity.SetShape(shape::RECTANGLE);
 	entity.SetStatic(true);
 
-	entity.AddAnimation("Idle", Animation::CreateSingleFrame(s_gateTexture));
+	entity.AddAnimation("Idle", FrameAnimation::CreateSingleFrame(s_gateTexture));
 
 	{
 		const std::vector<int> animFrames ={ 0, 1, 2, 3 };
-		Animation &addedAnimation = entity.AddAnimation("Score", Animation::CreateFromSpriteSheet2x2(s_gateAnimationSheet, animFrames));
+		Animation &addedAnimation = *entity.AddAnimation("Score", SinusoidalTransparencyAnimation::Create(s_gateScoreTexture, M_PI, k_gateBlinkFreauency));
 		addedAnimation.SetNextState("Idle");
-		addedAnimation.SetDuration(0.3f);
+		addedAnimation.SetDuration(0.75f);
 	}
 
 	return &entity;
@@ -482,18 +480,27 @@ bool Game::InitPlayground()
 	s_player1 = &s_player;
 	s_player2 = &s_bot;
 
-	s_player1->SetControlTarget(s_stick1);
-	s_player1->SetMoveForce(k_stickMovePower);
-	s_player1->SetArea(rectangle(glm::vec2(0.5f, 0.25f * reverseWindowRatio), glm::vec2(1.0f, reverseWindowRatio * 0.24f)));
+	s_player.SetControlTarget(s_stick1);
+	s_player.SetMoveForce(k_stickMovePower);
+	s_player.SetArea(rectangle(glm::vec2(0.5f, 0.25f * reverseWindowRatio), glm::vec2(1.0f, reverseWindowRatio * 0.24f)));
 
-	s_player2->SetControlTarget(s_stick2);
-	s_player2->SetMoveForce(k_stickMovePower);
-	s_player2->SetArea(rectangle(glm::vec2(0.5f, 0.75f * reverseWindowRatio), glm::vec2(1.0f, reverseWindowRatio * 0.27f)));
+	s_bot.SetControlTarget(s_stick2);
+	s_bot.SetMoveForce(k_stickMovePower);
+	s_bot.SetArea(rectangle(glm::vec2(0.5f, 0.75f * reverseWindowRatio), glm::vec2(1.0f, reverseWindowRatio * 0.27f)));
+
+	s_bot2.SetControlTarget(s_stick1);
+	s_bot2.SetMoveForce(k_stickMovePower);
+	s_bot2.SetArea(rectangle(glm::vec2(0.5f, 0.25f * reverseWindowRatio), glm::vec2(1.0f, reverseWindowRatio * 0.27f)));
 
 	SDL_assert(gate2->GetShape().m_type == shape::RECTANGLE);
 	s_bot.SetPuck(s_puck);
 	s_bot.SetOwnGateRectangle(gate2->GetShape().m_data.m_rectangle);
 	s_bot.SetOpponentGateRectangle(gate1->GetShape().m_data.m_rectangle);
+
+	SDL_assert(gate1->GetShape().m_type == shape::RECTANGLE);
+	s_bot2.SetPuck(s_puck);
+	s_bot2.SetOwnGateRectangle(gate1->GetShape().m_data.m_rectangle);
+	s_bot2.SetOpponentGateRectangle(gate2->GetShape().m_data.m_rectangle);
 
 	s_puckSpawner.position = glm::vec2(0.5f, reverseWindowRatio * 0.5f);
 	s_puckSpawner.radius = k_puckRadius * 2.5f;
@@ -540,12 +547,12 @@ bool Game::InitInterface()
 		return false;
 	}
 
-	s_scoreRect1.x = windowSize.x - 50;
+	s_scoreRect1.x = windowSize.x - k_scoreLetterWidth;
 	s_scoreRect1.y = windowSize.y - 25;
 	s_scoreRect1.w = k_scoreLetterWidth;
 	s_scoreRect1.h = 25;
 
-	s_scoreRect2.x = windowSize.x - 50;
+	s_scoreRect2.x = windowSize.x - k_scoreLetterWidth;
 	s_scoreRect2.y = 0;
 	s_scoreRect2.w = k_scoreLetterWidth;
 	s_scoreRect2.h = 25;
@@ -656,9 +663,11 @@ void Game::RenderBorders()
 
 void Game::RenderScore()
 {
-	// not optimal but works good enough
-	s_scoreRect1.w = k_scoreLetterWidth * std::to_string(s_count1).length();
-	s_scoreRect2.w = k_scoreLetterWidth * std::to_string(s_count2).length();
+	s_scoreRect1.x = windowSize.x - k_scoreLetterWidth * s_count1Str.length();
+	s_scoreRect1.w = k_scoreLetterWidth * s_count1Str.length();
+	
+	s_scoreRect2.x = windowSize.x - k_scoreLetterWidth * s_count2Str.length();
+	s_scoreRect2.w = k_scoreLetterWidth * s_count2Str.length();
 
 	SDL_RenderCopy(s_renderer, s_scoreTexture1, nullptr, &s_scoreRect1);
 	SDL_RenderCopy(s_renderer, s_scoreTexture2, nullptr, &s_scoreRect2);
@@ -678,11 +687,53 @@ bool Game::IsPuckSpawnerFree()
 }
 
 
+void Game::OnKeyDown(SDL_Scancode code)
+{
+	switch (code)
+	{
+		case k_exitKeyCode: OnExitClick(); break;
+	}
+
+	s_player.OnKeyboardDown(code);
+}
+
+
+void Game::OnKeyUp(SDL_Scancode code)
+{
+	switch (code)
+	{
+		case k_restartKeyCode: OnRestartClick(); break;
+		case k_autopilotKeyCode: OnAutopilotClick(); break;
+	}
+
+	s_player.OnKeyboardUp(code);
+}
+
+
+void Game::OnExitClick()
+{
+	s_isEnded = true;
+}
+
+
 void Game::OnRestartClick()
 {
 	Mix_PlayMusic(s_scoreResetSound, 1);
 
 	Restart();
+}
+
+
+void Game::OnAutopilotClick()
+{
+	if (s_player1 == &s_player)
+	{
+		s_player1 = &s_bot2;
+	}
+	else
+	{
+		s_player1 = &s_player;
+	}
 }
 
 
@@ -703,8 +754,9 @@ void Game::OnPlayerScore(Entity* entity1, Entity* entity2)
 void Game::OnPlayer1Score(Entity* entity1, Entity* entity2)
 {
 	s_count1++;
+	s_count1Str = std::to_string(s_count1);
 
-	SDL_Surface *surface = TTF_RenderText_Blended(s_font, std::to_string(s_count1).c_str(), k_textColor);
+	SDL_Surface *surface = TTF_RenderText_Blended(s_font, s_count1Str.c_str(), k_textColor);
 
 	s_scoreTexture1 = SDL_CreateTextureFromSurface(s_renderer, surface);
 
@@ -715,8 +767,9 @@ void Game::OnPlayer1Score(Entity* entity1, Entity* entity2)
 void Game::OnPlayer2Score(Entity* entity1, Entity* entity2)
 {
 	s_count2++;
+	s_count2Str = std::to_string(s_count2);
 
-	SDL_Surface *surface = TTF_RenderText_Blended(s_font, std::to_string(s_count2).c_str(), k_textColor);
+	SDL_Surface *surface = TTF_RenderText_Blended(s_font, s_count2Str.c_str(), k_textColor);
 
 	s_scoreTexture2 = SDL_CreateTextureFromSurface(s_renderer, surface);
 

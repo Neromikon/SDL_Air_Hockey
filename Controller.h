@@ -78,4 +78,5 @@ private:
 	rectangle m_ownGateRectangle;
 	rectangle m_opponentGateRectangle;
 	float m_remainingWaiting;
+	float m_gateGuardPointPhase;
 };

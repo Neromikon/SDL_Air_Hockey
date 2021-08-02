@@ -1,43 +1,34 @@
 ﻿  Animation.cpp
-d:\projects\- company\netgame\airhockey\animation.cpp(10): warning C4838: conversion from 'float' to 'int' requires a narrowing conversion
-d:\projects\- company\netgame\airhockey\animation.cpp(10): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
-d:\projects\- company\netgame\airhockey\animation.cpp(28): warning C4018: '<': signed/unsigned mismatch
-d:\projects\- company\netgame\airhockey\animation.cpp(71): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
-d:\projects\- company\netgame\airhockey\animation.cpp(71): warning C4244: 'initializing': conversion from 'float' to 'const int', possible loss of data
-d:\projects\- company\netgame\airhockey\animation.cpp(111): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-d:\projects\- company\netgame\airhockey\animation.cpp(112): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-d:\projects\- company\netgame\airhockey\animation.cpp(115): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
-d:\projects\- company\netgame\airhockey\animation.cpp(117): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
   AnimationController.cpp
-  Circle.cpp
   Controller.cpp
-d:\projects\- company\netgame\airhockey\controller.cpp(76): warning C4805: '|': unsafe mix of type 'const bool' and type 'int' in operation
-d:\projects\- company\netgame\airhockey\controller.cpp(152): warning C4244: 'argument': conversion from '__int64' to 'unsigned int', possible loss of data
+d:\projects\- company\netgame\airhockey\controller.cpp(79): warning C4805: '|': unsafe mix of type 'const bool' and type 'int' in operation
+d:\projects\- company\netgame\airhockey\controller.cpp(102): warning C4244: 'argument': conversion from '__int64' to 'unsigned int', possible loss of data
+d:\projects\- company\netgame\airhockey\controller.cpp(148): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+d:\projects\- company\netgame\airhockey\controller.cpp(163): warning C4244: 'argument': conversion from '__int64' to 'unsigned int', possible loss of data
   Entity.cpp
 d:\projects\- company\netgame\airhockey\entity.cpp(261): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
 d:\projects\- company\netgame\airhockey\entity.cpp(262): warning C4244: '=': conversion from 'float' to 'int', possible loss of data
   Game.cpp
-d:\projects\- company\netgame\airhockey\game.cpp(387): warning C4244: '=': conversion from 'float' to 'Uint32', possible loss of data
-d:\projects\- company\netgame\airhockey\game.cpp(468): warning C4101: 'wall': unreferenced local variable
-d:\projects\- company\netgame\airhockey\game.cpp(523): warning C4018: '<': signed/unsigned mismatch
-d:\projects\- company\netgame\airhockey\game.cpp(594): warning C4018: '<': signed/unsigned mismatch
-d:\projects\- company\netgame\airhockey\game.cpp(598): warning C4018: '<': signed/unsigned mismatch
-d:\projects\- company\netgame\airhockey\game.cpp(609): warning C4018: '<': signed/unsigned mismatch
-d:\projects\- company\netgame\airhockey\game.cpp(624): warning C4018: '<': signed/unsigned mismatch
-d:\projects\- company\netgame\airhockey\game.cpp(635): warning C4018: '<': signed/unsigned mismatch
-d:\projects\- company\netgame\airhockey\game.cpp(646): warning C4018: '<': signed/unsigned mismatch
-d:\projects\- company\netgame\airhockey\game.cpp(648): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
-d:\projects\- company\netgame\airhockey\game.cpp(649): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
-d:\projects\- company\netgame\airhockey\game.cpp(650): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
-d:\projects\- company\netgame\airhockey\game.cpp(651): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
-d:\projects\- company\netgame\airhockey\game.cpp(670): warning C4018: '<': signed/unsigned mismatch
-  Line.cpp
+d:\projects\- company\netgame\airhockey\game.cpp(336): warning C4305: 'argument': truncation from 'double' to 'float'
+d:\projects\- company\netgame\airhockey\game.cpp(385): warning C4244: '=': conversion from 'float' to 'Uint32', possible loss of data
+d:\projects\- company\netgame\airhockey\game.cpp(466): warning C4101: 'wall': unreferenced local variable
+d:\projects\- company\netgame\airhockey\game.cpp(530): warning C4018: '<': signed/unsigned mismatch
+d:\projects\- company\netgame\airhockey\game.cpp(601): warning C4018: '<': signed/unsigned mismatch
+d:\projects\- company\netgame\airhockey\game.cpp(605): warning C4018: '<': signed/unsigned mismatch
+d:\projects\- company\netgame\airhockey\game.cpp(616): warning C4018: '<': signed/unsigned mismatch
+d:\projects\- company\netgame\airhockey\game.cpp(631): warning C4018: '<': signed/unsigned mismatch
+d:\projects\- company\netgame\airhockey\game.cpp(642): warning C4018: '<': signed/unsigned mismatch
+d:\projects\- company\netgame\airhockey\game.cpp(653): warning C4018: '<': signed/unsigned mismatch
+d:\projects\- company\netgame\airhockey\game.cpp(655): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+d:\projects\- company\netgame\airhockey\game.cpp(656): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+d:\projects\- company\netgame\airhockey\game.cpp(657): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+d:\projects\- company\netgame\airhockey\game.cpp(658): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+d:\projects\- company\netgame\airhockey\game.cpp(679): warning C4018: '<': signed/unsigned mismatch
   Main.cpp
 d:\projects\- company\netgame\airhockey\main.cpp(10): warning C4326: return type of 'main' should be 'int' instead of 'void'
-  Rectangle.cpp
   Generating code
-  151 of 1330 functions (11.4%) were compiled, the rest were copied from previous compilation.
-    33 functions were new in current compilation
-    42 functions had inline decision re-evaluated but remain unchanged
+  315 of 1321 functions (23.8%) were compiled, the rest were copied from previous compilation.
+    155 functions were new in current compilation
+    120 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
   Airhockey.vcxproj -> D:\Projects\- Company\NetGame\Airhockey\Release\Airhockey.exe

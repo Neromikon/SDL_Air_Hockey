@@ -17,7 +17,7 @@
 class AnimationController;
 
 
-class Animation final
+class Animation
 {
 	friend AnimationController;
 
@@ -27,11 +27,11 @@ public:
 		SDL_Texture* texture;
 		SDL_Rect rect;
 
-		inline Frame():
+		inline Frame() :
 			texture(nullptr)
 		{}
 
-		inline Frame(SDL_Texture* texture, SDL_Rect rect):
+		inline Frame(SDL_Texture* texture, SDL_Rect rect) :
 			texture(texture),
 			rect(rect)
 		{}
@@ -39,19 +39,12 @@ public:
 		Frame(const Frame& other) = default;
 	};
 
+public:
 	Animation() = default;
 	Animation(const Animation &other) = default;
-	~Animation() = default;
+	virtual ~Animation() = default;
 
-	static Animation CreateSingleFrame(SDL_Texture *texture);
-	static Animation CreateFromSpriteSheet2x2(SDL_Texture *texture, const std::vector<int>& frames);
-
-	Animation& operator=(const Animation& other);
-	Animation& operator=(Animation&& other);
-
-	const Frame& GetFrame(float moment);
-
-	void AddFrame(SDL_Texture* texture, SDL_Rect rect, int repetitions = 1);
+	virtual const Frame& GetFrame(float moment) const = 0;
 
 	inline float GetDuration() const { return m_duration; }
 
@@ -64,9 +57,44 @@ public:
 protected:
 	float m_duration;
 	bool m_isLooped;
-	std::vector<Frame> m_frames;
 	Event<void()> m_onFinish;
 	std::string m_nextState;
+};
 
+
+class FrameAnimation : public Animation
+{
+public:
+	static FrameAnimation* CreateSingleFrame(SDL_Texture *texture);
+	static FrameAnimation* CreateFromSpriteSheet2x2(SDL_Texture *texture, const std::vector<int>& frames);
+
+	virtual const Frame& GetFrame(float moment) const override;
+
+	void AddFrame(SDL_Texture* texture, SDL_Rect rect, int repetitions = 1);
+
+protected:
 	static std::vector<Frame> CreateFramesFromSpriteSheet2x2(SDL_Texture *texture);
+
+protected:
+	std::vector<Frame> m_frames;
+};
+
+
+class SinusoidalTransparencyAnimation : public Animation
+{
+public:
+	static SinusoidalTransparencyAnimation* Create(SDL_Texture *texture, float phase, float frequency);
+	static SinusoidalTransparencyAnimation* Create(SDL_Texture *texture, float phase, float frequency, float minTransparency, float maxTransparency);
+
+	virtual const Frame& GetFrame(float moment) const override;
+
+	float GetTransparency(float moment) const;
+
+protected:
+	Frame m_frame;
+
+	float m_frequency;
+	float m_phase;
+	float m_minTransparency;
+	float m_maxTransparency;
 };

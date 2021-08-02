@@ -59,6 +59,7 @@ private:
 
 	static KeyboardController s_player;
 	static AIController s_bot;
+	static AIController s_bot2;
 
 	static Controller *s_player1, *s_player2;
 	static unsigned int s_count1, s_count2;
@@ -77,6 +78,7 @@ private:
 	static SDL_Texture* s_stickAnimationSheet1;
 	static SDL_Texture* s_stickAnimationSheet2;
 	static SDL_Texture* s_gateTexture;
+	static SDL_Texture* s_gateScoreTexture;
 	static SDL_Texture* s_gateAnimationSheet;
 
 	static TTF_Font* s_font;
@@ -113,7 +115,12 @@ private:
 	
 	static bool IsPuckSpawnerFree();
 
+	static void OnKeyDown(SDL_Scancode code);
+	static void OnKeyUp(SDL_Scancode code);
+	static void OnExitClick();
 	static void OnRestartClick();
+	static void OnAutopilotClick();
+
 	static void OnPlayerScore(Entity*, Entity*);
 	static void OnPlayer1Score(Entity*, Entity*);
 	static void OnPlayer2Score(Entity*, Entity*);
